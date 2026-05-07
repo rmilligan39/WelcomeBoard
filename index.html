@@ -259,6 +259,111 @@
     color: var(--gold-dim);
     opacity: 0.5; letter-spacing: 2px;
   }
+
+  /* ── Company Carousel ── */
+  .carousel-display {
+    position: absolute;
+    top: 0; left: 0;
+    width: 1080px; height: 1920px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background:
+      radial-gradient(ellipse at 50% 40%, rgba(173,149,81,0.06) 0%, transparent 60%),
+      var(--maroon-deep);
+    opacity: 0;
+    transition: opacity 1s ease;
+    pointer-events: none;
+    z-index: 90;
+  }
+
+  .carousel-display.visible { opacity: 1; }
+
+  .carousel-label {
+    font-family: 'Rokkitt', serif;
+    font-size: 36px;
+    font-weight: 600;
+    color: var(--gold-dim);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 50px;
+    opacity: 0.7;
+  }
+
+  .carousel-company-name {
+    font-family: 'Rokkitt', serif;
+    font-size: 56px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 3px;
+    text-align: center;
+    padding: 0 80px;
+    margin-bottom: 40px;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    opacity: 0;
+    transform: translateY(15px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+  }
+
+  .carousel-company-name.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .carousel-logo-frame {
+    width: 500px;
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.95);
+    border-radius: 12px;
+    padding: 40px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+    opacity: 0;
+    transform: translateY(15px);
+    transition: opacity 0.8s ease 0.15s, transform 0.8s ease 0.15s;
+  }
+
+  .carousel-logo-frame.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .carousel-logo-frame img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
+  .carousel-logo-placeholder {
+    font-family: 'Open Sans', sans-serif;
+    font-size: 22px;
+    color: #999;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .carousel-dots {
+    display: flex;
+    gap: 12px;
+    margin-top: 50px;
+  }
+
+  .carousel-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--gold-dim);
+    opacity: 0.3;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+
+  .carousel-dot.active {
+    opacity: 1;
+    transform: scale(1.3);
+    background: var(--gold);
+  }
 </style>
 </head>
 <body>
@@ -284,6 +389,16 @@
     <div class="datetime-time" id="dtTime"></div>
   </div>
 
+
+  <!-- Company Logo Carousel -->
+  <div class="carousel-display" id="carouselDisplay">
+    <div class="carousel-label">Our Guests</div>
+    <div class="carousel-company-name" id="carouselName"></div>
+    <div class="carousel-logo-frame" id="carouselFrame">
+      <div class="carousel-logo-placeholder" id="carouselLogo">LOGO</div>
+    </div>
+    <div class="carousel-dots" id="carouselDots"></div>
+  </div>
   <div class="corner-clock" id="cornerClock"></div>
 
 <script>
@@ -304,8 +419,90 @@
   const HOLD_TIME = 120000;       // 2 min hold
   const DATETIME_DISPLAY_TIME = 8000;
   const NAME_REVEAL_DELAY = 120;  // ms between rows
-  const CHAR_FLIP_DELAY = 75;     // ms between chars in a row
+  const CHAR_FLIP_DELAY = 25;     // ms between chars in a row
   const FLIP_CYCLES = 4;
+
+
+  // ═══════════════════════════════════════════════════════
+  // COMPANY CAROUSEL CONFIG
+  // To add real logos: set logo_src to an image path or
+  // base64 data URI, e.g. "data:image/png;base64,..."
+  // Set ENABLE_CAROUSEL to false to skip the carousel.
+  // ═══════════════════════════════════════════════════════
+  const ENABLE_CAROUSEL = true;
+  const CAROUSEL_SLIDE_TIME = 5000;  // ms per company slide
+
+  const COMPANIES = [
+    { name: "the duck song",       logo_src: "" },
+    { name: "Wayne Enterprises",      logo_src: "/logos/ducksong1.png" },
+    { name: "Stark Industries",       logo_src: "" },
+    { name: "Umbrella Corporation",   logo_src: "" },
+    { name: "Globex Corporation",     logo_src: "" },
+  ];
+
+  const carouselDisplay = document.getElementById('carouselDisplay');
+  const carouselName    = document.getElementById('carouselName');
+  const carouselFrame   = document.getElementById('carouselFrame');
+  const carouselLogo    = document.getElementById('carouselLogo');
+  const carouselDots    = document.getElementById('carouselDots');
+
+  function showCarousel() {
+    if (!ENABLE_CAROUSEL || COMPANIES.length === 0) return Promise.resolve();
+
+    return new Promise(resolve => {
+      // Build dots
+      carouselDots.innerHTML = '';
+      COMPANIES.forEach((_, i) => {
+        const dot = document.createElement('div');
+        dot.className = 'carousel-dot';
+        dot.dataset.index = i;
+        carouselDots.appendChild(dot);
+      });
+
+      carouselDisplay.classList.add('visible');
+      let idx = 0;
+
+      function showSlide() {
+        const company = COMPANIES[idx];
+
+        // Reset animations
+        carouselName.classList.remove('visible');
+        carouselFrame.classList.remove('visible');
+        carouselName.textContent = company.name;
+
+        // Set logo or placeholder
+        if (company.logo_src) {
+          carouselLogo.innerHTML = '<img src="' + company.logo_src + '" alt="' + company.name + '">';
+        } else {
+          carouselLogo.innerHTML = '<span class="carousel-logo-placeholder">' + company.name + '</span>';
+        }
+
+        // Update dots
+        carouselDots.querySelectorAll('.carousel-dot').forEach((d, i) => {
+          d.classList.toggle('active', i === idx);
+        });
+
+        // Animate in
+        requestAnimationFrame(() => {
+          carouselName.classList.add('visible');
+          carouselFrame.classList.add('visible');
+        });
+
+        idx++;
+        if (idx < COMPANIES.length) {
+          setTimeout(showSlide, CAROUSEL_SLIDE_TIME);
+        } else {
+          setTimeout(() => {
+            carouselDisplay.classList.remove('visible');
+            setTimeout(resolve, 1200);
+          }, CAROUSEL_SLIDE_TIME);
+        }
+      }
+
+      // Small delay then start
+      setTimeout(showSlide, 800);
+    });
+  }
 
   const container = document.getElementById('namesContainer');
   const dtDisplay = document.getElementById('datetimeDisplay');
@@ -468,6 +665,7 @@
         await flipRow(rows[i], NAMES[i]);
       }
       await new Promise(r => setTimeout(r, HOLD_TIME));
+      await showCarousel();
       await showDateTime();
       await new Promise(r => setTimeout(r, 1000));
     }
